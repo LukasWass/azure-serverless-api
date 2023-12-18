@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -21,15 +22,24 @@ public static class GetProductsHttpTrigger
         Description =
             "This is meant for batch fetching products. {ids} can contain up to 100 semicolon delimited ids.")]
     [OpenApiParameter("ids", Description = "Semicolon delimited product ids", Type = typeof(string), Required = true)]
-    [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(string))]
+    [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(List<EntityLibrary.Product.Product>))]
+    [OpenApiResponseWithoutBody(HttpStatusCode.BadRequest)]
     public static async Task<IActionResult> GetProducts(
         [HttpTrigger(AuthorizationLevel.Function, "GET", Route = "products/{ids}")]
         HttpRequest req,
+        [CosmosDB(
+            databaseName: "CompanyDb",
+            containerName: "Products",
+            Connection = "COSMOS_CONNECTION_STRING")]
+        IEnumerable<EntityLibrary.Product.Product> documents,
         string ids,
         ILogger log)
     {
-        log.LogInformation("C# HTTP trigger function processed a request.");
+        var productIds = ids.Split(";").Where(i => !string.IsNullOrEmpty(i)).ToList();
+        if (productIds.Count > 100) return new BadRequestObjectResult("Max allowed product ids is 100");
 
-        return new OkObjectResult($"Products: {ids}");
+        var products = documents.Where(i => productIds.Contains(i.Id));
+
+        return new OkObjectResult(products);
     }
 }

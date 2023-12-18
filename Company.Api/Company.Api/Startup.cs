@@ -29,8 +29,7 @@ public class Startup : FunctionsStartup
                         Email = Environment.GetEnvironmentVariable("API_CONTACT_EMAIL"),
                         Url = new Uri(Environment.GetEnvironmentVariable("API_CONTACT_URL") ?? "")
                     }
-                },
-                IncludeRequestingHostName = false
+                }
             };
 
             return options;

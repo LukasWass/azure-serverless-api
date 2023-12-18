@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -18,15 +20,23 @@ public static class GetProductHttpTrigger
         Summary = "Get product",
         Description = "Get one product")]
     [OpenApiParameter("id", Description = "Product id", Type = typeof(string), Required = true)]
-    [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(string))]
+    [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(EntityLibrary.Product.Product))]
+    [OpenApiResponseWithoutBody(HttpStatusCode.NotFound)]
     public static async Task<IActionResult> GetProduct(
         [HttpTrigger(AuthorizationLevel.Function, "GET", Route = "product/{id}")]
         HttpRequest req,
+        [CosmosDB(
+            databaseName: "CompanyDb",
+            containerName: "Products",
+            Connection = "COSMOS_CONNECTION_STRING")]
+        IEnumerable<EntityLibrary.Product.Product> documents,
         string id,
         ILogger log)
     {
-        log.LogInformation("C# HTTP trigger function processed a request.");
+        var product = documents.Where(i => i.Id == id)?.FirstOrDefault();
 
-        return new OkObjectResult($"Product: {id}");
+        if (product == null) return new NotFoundResult();
+
+        return new OkObjectResult(product);
     }
 }
